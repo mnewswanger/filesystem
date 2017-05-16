@@ -15,22 +15,22 @@ import (
 // Filesystem represents the base structure for the package
 type Filesystem struct {
 	Verbosity uint8
-	logger    *logrus.Logger
+	Logger    *logrus.Logger
 }
 
 // BuildAbsolutePathFromHome builds an absolute path (i.e. /home/user/example) from a home-based path (~/example)
-func (fs Filesystem) BuildAbsolutePathFromHome(path string) (string, error) {
+func (fs *Filesystem) BuildAbsolutePathFromHome(path string) (string, error) {
 	fs.initialize()
 
 	var err error
 
+	fs.Logger.Debug("Expanding path: " + path)
 	path, err = homedir.Expand(path)
-	fs.logger.Info("Expanding " + path)
 	return path, err
 }
 
 // CheckExists checks to see if the provided path exists on the machine
-func (fs Filesystem) CheckExists(path string) (bool, error) {
+func (fs *Filesystem) CheckExists(path string) bool {
 	fs.initialize()
 
 	var err error
@@ -38,21 +38,21 @@ func (fs Filesystem) CheckExists(path string) (bool, error) {
 	path, err = fs.BuildAbsolutePathFromHome(path)
 	if err == nil {
 		if _, e := os.Stat(path); !os.IsNotExist(e) {
-			return true, err
+			return true
 		}
 	}
-	return false, err
+	return false
 }
 
 // CreateDirectory creates a directory on the machine
 //   All children will be created (behavior matches mkdir -p)
-func (fs Filesystem) CreateDirectory(path string) (bool, error) {
+func (fs *Filesystem) CreateDirectory(path string) (bool, error) {
 	fs.initialize()
 
 	var err error
 
 	path, err = fs.BuildAbsolutePathFromHome(path)
-	if err != nil {
+	if err == nil {
 		if fs.IsDirectory(path) {
 			return true, err
 		}
@@ -62,8 +62,12 @@ func (fs Filesystem) CreateDirectory(path string) (bool, error) {
 }
 
 // ForceTrailingSlash forces a trailing slash at the end of the path
-func (fs Filesystem) ForceTrailingSlash(path string) string {
+func (fs *Filesystem) ForceTrailingSlash(path string) string {
 	fs.initialize()
+
+	if len(path) == 0 {
+		return "/"
+	}
 
 	if string(path[len(path)-1]) != "/" {
 		path += "/"
@@ -72,7 +76,7 @@ func (fs Filesystem) ForceTrailingSlash(path string) string {
 }
 
 // GetDirectoryContents gets the files and folders inside the provided path
-func (fs Filesystem) GetDirectoryContents(path string) ([]string, error) {
+func (fs *Filesystem) GetDirectoryContents(path string) ([]string, error) {
 	fs.initialize()
 
 	var err error
@@ -90,7 +94,7 @@ func (fs Filesystem) GetDirectoryContents(path string) ([]string, error) {
 
 // GetFileSHA256Checksum gets the SHA-256 checksum of the file as a hex string
 //   Output matches sha256sum (Linux) / shasum -a 256 (OSX)
-func (fs Filesystem) GetFileSHA256Checksum(path string) (string, error) {
+func (fs *Filesystem) GetFileSHA256Checksum(path string) (string, error) {
 	fs.initialize()
 
 	var err error
@@ -113,7 +117,7 @@ func (fs Filesystem) GetFileSHA256Checksum(path string) (string, error) {
 }
 
 // IsDirectory returns when path exists and is a directory
-func (fs Filesystem) IsDirectory(path string) bool {
+func (fs *Filesystem) IsDirectory(path string) bool {
 	fs.initialize()
 
 	path, _ = fs.BuildAbsolutePathFromHome(path)
@@ -122,7 +126,7 @@ func (fs Filesystem) IsDirectory(path string) bool {
 }
 
 // IsFile returns when path exists and is a file
-func (fs Filesystem) IsFile(path string) bool {
+func (fs *Filesystem) IsFile(path string) bool {
 	fs.initialize()
 
 	path, _ = fs.BuildAbsolutePathFromHome(path)
@@ -132,7 +136,7 @@ func (fs Filesystem) IsFile(path string) bool {
 }
 
 // IsEmptyDirectory returns when path exists and is an empty directory
-func (fs Filesystem) IsEmptyDirectory(path string) bool {
+func (fs *Filesystem) IsEmptyDirectory(path string) bool {
 	fs.initialize()
 
 	path, _ = fs.BuildAbsolutePathFromHome(path)
@@ -140,17 +144,16 @@ func (fs Filesystem) IsEmptyDirectory(path string) bool {
 		if file, err := os.Open(path); err == nil {
 			contents, err := file.Readdir(1)
 
-			if err != nil && err != io.EOF {
-				panic(err)
+			if err == nil || err == io.EOF {
+				return len(contents) == 0
 			}
-			return len(contents) == 0
 		}
 	}
 	return false
 }
 
 // LoadFileIfExists loads the contents of path into a string if the file exists
-func (fs Filesystem) LoadFileIfExists(path string) (string, error) {
+func (fs *Filesystem) LoadFileIfExists(path string) (string, error) {
 	fs.initialize()
 
 	var err error
@@ -171,7 +174,7 @@ func (fs Filesystem) LoadFileIfExists(path string) (string, error) {
 
 // RemoveDirectory removes the directory at path from the system
 // If recursive is set to true, it will remove all children as well
-func (fs Filesystem) RemoveDirectory(path string, recursive bool) (bool, error) {
+func (fs *Filesystem) RemoveDirectory(path string, recursive bool) (bool, error) {
 	fs.initialize()
 
 	var err error
@@ -192,7 +195,7 @@ func (fs Filesystem) RemoveDirectory(path string, recursive bool) (bool, error) 
 }
 
 // WriteFile writes contents of data to path
-func (fs Filesystem) WriteFile(path string, data []byte, mode os.FileMode) error {
+func (fs *Filesystem) WriteFile(path string, data []byte, mode os.FileMode) error {
 	fs.initialize()
 
 	var err error
@@ -204,19 +207,19 @@ func (fs Filesystem) WriteFile(path string, data []byte, mode os.FileMode) error
 	return err
 }
 
-func (fs Filesystem) initialize() {
-	if fs.logger == nil {
-		fs.logger = logrus.New()
+func (fs *Filesystem) initialize() {
+	if fs.Logger == nil {
+		fs.Logger = logrus.New()
 
 		switch fs.Verbosity {
-		case 0:
-			logrus.SetLevel(logrus.WarnLevel)
-			break
 		case 1:
-			logrus.SetLevel(logrus.InfoLevel)
+			fs.Logger.Level = logrus.InfoLevel
 			break
 		case 2:
-			logrus.SetLevel(logrus.DebugLevel)
+			fs.Logger.Level = logrus.DebugLevel
+			break
+		default:
+			fs.Logger.Level = logrus.WarnLevel
 			break
 		}
 	}

@@ -309,7 +309,7 @@ func (fs *Filesystem) WriteFile(path string, data []byte, mode os.FileMode) erro
 
 	path, err = fs.BuildAbsolutePathFromHome(path)
 	if err == nil {
-		fs.Logger.Debug("Writing file", path)
+		fs.Logger.WithFields(fields).Debug("Writing file")
 		err = ioutil.WriteFile(path, data, mode)
 		if err == nil {
 			fs.Logger.WithFields(fields).Debug("Successfully wrote file")

@@ -18,6 +18,29 @@ type Filesystem struct {
 	Logger    *logrus.Logger
 }
 
+func (fs *Filesystem) initialize() {
+	if fs.Logger == nil {
+		fs.Logger = logrus.New()
+
+		switch fs.Verbosity {
+		case 0:
+			fs.Logger.Level = logrus.ErrorLevel
+			break
+		case 1:
+			fs.Logger.Level = logrus.WarnLevel
+			break
+		case 2:
+			fallthrough
+		case 3:
+			fs.Logger.Level = logrus.InfoLevel
+			break
+		default:
+			fs.Logger.Level = logrus.DebugLevel
+			break
+		}
+	}
+}
+
 // BuildAbsolutePathFromHome builds an absolute path (i.e. /home/user/example) from a home-based path (~/example)
 func (fs *Filesystem) BuildAbsolutePathFromHome(path string) (string, error) {
 	fs.initialize()
@@ -295,27 +318,4 @@ func (fs *Filesystem) WriteFile(path string, data []byte, mode os.FileMode) erro
 		}
 	}
 	return err
-}
-
-func (fs *Filesystem) initialize() {
-	if fs.Logger == nil {
-		fs.Logger = logrus.New()
-
-		switch fs.Verbosity {
-		case 0:
-			fs.Logger.Level = logrus.ErrorLevel
-			break
-		case 1:
-			fs.Logger.Level = logrus.WarnLevel
-			break
-		case 2:
-			fallthrough
-		case 3:
-			fs.Logger.Level = logrus.InfoLevel
-			break
-		default:
-			fs.Logger.Level = logrus.DebugLevel
-			break
-		}
-	}
 }

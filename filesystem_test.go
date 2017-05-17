@@ -5,12 +5,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 )
 
-var fs = Filesystem{}
+var fs = Filesystem{
+	Verbosity: 4,
+}
 
 func TestHomedirExpansion(t *testing.T) {
+	color.Yellow("Testing ~ expansion functionality")
 	var expandedPath, err = fs.BuildAbsolutePathFromHome("~/test-dir")
 	if err != nil {
 		t.Error(err)
@@ -18,9 +22,12 @@ func TestHomedirExpansion(t *testing.T) {
 	if strings.Index(expandedPath, "/") != 0 {
 		t.Error("Absolute path should start with /")
 	}
+	color.Yellow("Test complete")
+	println()
 }
 
-func TestDirectoryFunctionality(t *testing.T) {
+func TestFilesystemOperations(t *testing.T) {
+	color.Yellow("Testing Filesystem Operations")
 	// Create a temp directory
 	var tempDir, err = ioutil.TempDir("/tmp/", ".filesystem-test-")
 	if err != nil {
@@ -36,6 +43,7 @@ func TestDirectoryFunctionality(t *testing.T) {
 	testFilesystemOperations(t, tempDir+"/this/has/subfolders/that/dont/exist")
 
 	// Verify the loading a non-existent files / folders returns properly
+	color.Yellow("Test failure handling")
 	if c, err := fs.LoadFileIfExists(tempDir + "/file-dne"); err == nil || c != "" {
 		t.Error("Load non-existent file test failed")
 	}
@@ -45,20 +53,25 @@ func TestDirectoryFunctionality(t *testing.T) {
 	if c, err := fs.GetFileSHA256Checksum(tempDir + "/file-dne"); err == nil || c != "" {
 		t.Error("Non-existent file checksum test failed")
 	}
+	if err := fs.WriteFile(tempDir+"/dne/expect-error", []byte("test"), 0644); err == nil {
+		t.Error("Write should have failed but did not return an error")
+	}
 
 	fs.RemoveDirectory(tempDir, true)
 	if fs.CheckExists(tempDir) {
 		t.Error("Recursive directory removal failed; returned true:", tempDir)
 	}
+	color.Yellow("Test Complete")
+	println()
 }
 
 func testFilesystemOperations(t *testing.T, dir string) {
-	// Make sure the directory doesn't exist before starting
+	color.Yellow("Make sure the directory doesn't exist before starting")
 	if fs.CheckExists(dir) {
 		t.Error("Directory already exists:" + dir)
 	}
 
-	// Attempt to create the directory
+	color.Yellow("Attempt to create the directory")
 	if created, err := fs.CreateDirectory(dir); err != nil || !created {
 		t.Error("Create directory failed:", dir, err)
 	}
@@ -66,17 +79,15 @@ func testFilesystemOperations(t *testing.T, dir string) {
 		t.Error("Create diretory did not create the directory properly:", dir)
 	}
 
-	// Try creating again now that the directory exists
+	color.Yellow("Try creating again now that the directory exists")
 	if created, err := fs.CreateDirectory(dir); err != nil || !created {
 		t.Error("Create directory failed:", dir, err)
 	}
-
-	// Make sure the folder is empty
 	if c, err := fs.GetDirectoryContents(dir); err != nil || len(c) > 0 {
 		t.Error("Directory is not empty:", dir)
 	}
 
-	// Remove the directory
+	color.Yellow("Remove the directory")
 	if deleted, err := fs.RemoveDirectory(dir, false); err != nil || !deleted {
 		t.Error("Directory could not be deleted:", dir)
 	}
@@ -84,27 +95,23 @@ func testFilesystemOperations(t *testing.T, dir string) {
 		t.Error("Directory should have been removed but was found:", dir)
 	}
 
-	// Recreate the directory
+	color.Yellow("Recreate the directory")
 	if created, err := fs.CreateDirectory(dir); err != nil || !created {
 		t.Error("Create directory failed:", dir, err)
 	}
 	if !fs.CheckExists(dir) {
 		t.Error("Create diretory did not create the directory properly:", dir)
 	}
-
-	// Test IsEmptyDirectory
 	if !fs.IsEmptyDirectory(dir) {
 		t.Error("Directory is reported as not empty but has no contents:", dir)
 	}
 
-	// Write a file inside the directory
+	color.Yellow("Write a file inside the directory")
 	var testFile = dir + "/test.file"
 	var testFileContents = "test"
 	if err := fs.WriteFile(testFile, []byte(testFileContents), 0644); err != nil {
 		t.Error("Error occured while writing file:", testFile, err)
 	}
-
-	// Test IsFile && IsDirectory
 	if !fs.IsDirectory(dir) {
 		t.Error("IsDirectory test failed: ", dir, " is a directory")
 	}
@@ -136,7 +143,7 @@ func testFilesystemOperations(t *testing.T, dir string) {
 		t.Error("File checksum incorrect for:", testFile, "Got:", c, "Wanted:", "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08")
 	}
 
-	// Remove the directory
+	color.Yellow("Remove the directory")
 	if deleted, err := fs.RemoveDirectory(dir, true); err != nil || !deleted {
 		t.Error("Directory could not be deleted:", dir)
 	}
@@ -151,6 +158,7 @@ func testFilesystemOperations(t *testing.T, dir string) {
 }
 
 func TestTrailingSlash(t *testing.T) {
+	color.Yellow("Testing force trailing slash functionality")
 	var testData = map[string]string{
 		"":        "/",
 		"/test/":  "/test/",
@@ -165,12 +173,15 @@ func TestTrailingSlash(t *testing.T) {
 			t.Error("ForceTrailingSlash failed:", "Got:", got, "Wanted:", v)
 		}
 	}
+	color.Yellow("Test Complete")
+	println()
 }
 
 func TestLoggingOptions(t *testing.T) {
+	color.Yellow("Testing logging options")
 	var err error
 	// Try different verbosity levels
-	for i := uint8(0); i <= 2; i++ {
+	for i := uint8(0); i <= 3; i++ {
 		fs = Filesystem{
 			Verbosity: i,
 		}
@@ -185,4 +196,6 @@ func TestLoggingOptions(t *testing.T) {
 		Logger: logger,
 	}
 	fs.BuildAbsolutePathFromHome("~/test")
+	color.Yellow("Test Complete")
+	println()
 }

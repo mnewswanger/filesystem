@@ -77,7 +77,7 @@ func (fs *Filesystem) CheckExists(path string) bool {
 
 // CreateDirectory creates a directory on the machine
 //   All children will be created (behavior matches mkdir -p)
-func (fs *Filesystem) CreateDirectory(path string) (bool, error) {
+func (fs *Filesystem) CreateDirectory(path string) error {
 	fs.initialize()
 
 	var err error
@@ -96,10 +96,11 @@ func (fs *Filesystem) CreateDirectory(path string) (bool, error) {
 		}
 	}
 	fs.Logger.WithFields(fields).Warn("Failed to create directory")
-	return err == nil, err
+	return err
 }
 
 // ForceTrailingSlash forces a trailing slash at the end of the path
+// It will add the trailing slash only if one does not already exist
 func (fs *Filesystem) ForceTrailingSlash(path string) string {
 	fs.initialize()
 

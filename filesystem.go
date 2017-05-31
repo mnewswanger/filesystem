@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
@@ -134,6 +135,15 @@ func (fs *Filesystem) GetDirectoryContents(path string) ([]string, error) {
 		}
 	}
 	return fileNames, err
+}
+
+// GetFileExtension returns the extension for the file passed in
+func (fs *Filesystem) GetFileExtension(path string) string {
+	var ext = filepath.Ext(path)
+	if len(ext) > 0 {
+		return ext[1:]
+	}
+	return ""
 }
 
 // GetFileSHA256Checksum gets the SHA-256 checksum of the file as a hex string
@@ -266,7 +276,7 @@ func (fs *Filesystem) LoadFileIfExists(path string) (string, error) {
 
 // RemoveDirectory removes the directory at path from the system
 // If recursive is set to true, it will remove all children as well
-func (fs *Filesystem) RemoveDirectory(path string, recursive bool) (bool, error) {
+func (fs *Filesystem) RemoveDirectory(path string, recursive bool) error {
 	fs.initialize()
 
 	var err error
@@ -288,14 +298,14 @@ func (fs *Filesystem) RemoveDirectory(path string, recursive bool) (bool, error)
 			}
 			if err == nil {
 				fs.Logger.WithFields(fields).Debug("Directory was removed")
-				return true, err
+				return nil
 			}
 		} else {
 			err = errors.New(path + " is not a directory")
 		}
 	}
 	fs.Logger.WithFields(fields).Warn("Failed to remove directory")
-	return false, err
+	return err
 }
 
 // WriteFile writes contents of data to path

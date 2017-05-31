@@ -72,7 +72,7 @@ func testFilesystemOperations(t *testing.T, dir string) {
 	}
 
 	color.Yellow("Attempt to create the directory")
-	if created, err := fs.CreateDirectory(dir); err != nil || !created {
+	if err := fs.CreateDirectory(dir); err != nil {
 		t.Error("Create directory failed:", dir, err)
 	}
 	if !fs.CheckExists(dir) {
@@ -80,7 +80,7 @@ func testFilesystemOperations(t *testing.T, dir string) {
 	}
 
 	color.Yellow("Try creating again now that the directory exists")
-	if created, err := fs.CreateDirectory(dir); err != nil || !created {
+	if err := fs.CreateDirectory(dir); err != nil {
 		t.Error("Create directory failed:", dir, err)
 	}
 	if c, err := fs.GetDirectoryContents(dir); err != nil || len(c) > 0 {
@@ -88,7 +88,7 @@ func testFilesystemOperations(t *testing.T, dir string) {
 	}
 
 	color.Yellow("Remove the directory")
-	if deleted, err := fs.RemoveDirectory(dir, false); err != nil || !deleted {
+	if err := fs.RemoveDirectory(dir, false); err != nil {
 		t.Error("Directory could not be deleted:", dir)
 	}
 	if fs.CheckExists(dir) {
@@ -96,7 +96,7 @@ func testFilesystemOperations(t *testing.T, dir string) {
 	}
 
 	color.Yellow("Recreate the directory")
-	if created, err := fs.CreateDirectory(dir); err != nil || !created {
+	if err := fs.CreateDirectory(dir); err != nil {
 		t.Error("Create directory failed:", dir, err)
 	}
 	if !fs.CheckExists(dir) {
@@ -144,7 +144,7 @@ func testFilesystemOperations(t *testing.T, dir string) {
 	}
 
 	color.Yellow("Remove the directory")
-	if deleted, err := fs.RemoveDirectory(dir, true); err != nil || !deleted {
+	if err := fs.RemoveDirectory(dir, true); err != nil {
 		t.Error("Directory could not be deleted:", dir)
 	}
 	if fs.CheckExists(dir) {
@@ -152,7 +152,7 @@ func testFilesystemOperations(t *testing.T, dir string) {
 	}
 
 	// Attempt to remove the directory again
-	if deleted, err := fs.RemoveDirectory(dir, false); err == nil || deleted {
+	if err := fs.RemoveDirectory(dir, false); err == nil {
 		t.Error("Directory could not be deleted:", dir)
 	}
 }
@@ -198,4 +198,23 @@ func TestLoggingOptions(t *testing.T) {
 	fs.BuildAbsolutePathFromHome("~/test")
 	color.Yellow("Test Complete")
 	println()
+}
+
+func TestFileExtensionFunctionality(t *testing.T) {
+	var extensionTestData = map[string]string{
+		"none":                "",
+		"file.ext":            "ext",
+		"file.bk.ext":         "ext",
+		"/full/path.txt":      "txt",
+		"~/relative/path.pdf": "pdf",
+		"test.":               "",
+	}
+
+	var got string
+	for value, expected := range extensionTestData {
+		got = fs.GetFileExtension(value)
+		if got != expected {
+			t.Error("Got back unexpected extension.", "Expected:", expected, "Got:", got)
+		}
+	}
 }

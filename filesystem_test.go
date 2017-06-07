@@ -2,6 +2,7 @@ package filesystem
 
 import (
 	"io/ioutil"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -44,8 +45,11 @@ func TestFilesystemOperations(t *testing.T) {
 
 	// Verify the loading a non-existent files / folders returns properly
 	color.Yellow("Test failure handling")
-	if c, err := fs.LoadFileIfExists(tempDir + "/file-dne"); err == nil || c != "" {
-		t.Error("Load non-existent file test failed")
+	if c, err := fs.LoadFileString(tempDir + "/file-dne"); err == nil || c != "" {
+		t.Error("Load non-existent file string test failed")
+	}
+	if c, err := fs.LoadFileBytes(tempDir + "/file-dne"); err == nil || !reflect.DeepEqual(c, []byte{}) {
+		t.Error("Load non-existent file bytes test failed")
 	}
 	if fs.IsEmptyDirectory(tempDir + "/dne/") {
 		t.Error("Non-existent directory says it's an empty directory")
@@ -109,7 +113,8 @@ func testFilesystemOperations(t *testing.T, dir string) {
 	color.Yellow("Write a file inside the directory")
 	var testFile = dir + "/test.file"
 	var testFileContents = "test"
-	if err := fs.WriteFile(testFile, []byte(testFileContents), 0644); err != nil {
+	var testFileBytes = []byte(testFileContents)
+	if err := fs.WriteFile(testFile, testFileBytes, 0644); err != nil {
 		t.Error("Error occured while writing file:", testFile, err)
 	}
 	if !fs.IsDirectory(dir) {
@@ -134,6 +139,13 @@ func testFilesystemOperations(t *testing.T, dir string) {
 	}
 
 	// Verify the contents of the file match what was intended
+	if c, err := fs.LoadFileString(testFile); err != nil || c != testFileContents {
+		t.Error("File contents (string) don't match what was saved: ", testFile, "Got:", c, "Wanted:", testFileContents)
+	}
+	if c, err := fs.LoadFileBytes(testFile); err != nil || !reflect.DeepEqual(c, testFileBytes) {
+		t.Error("File contents (bytes) don't match what was saved: ", testFile, "Got:", c, "Wanted:", testFileBytes)
+	}
+	// Test deprecated function call
 	if c, err := fs.LoadFileIfExists(testFile); err != nil || c != testFileContents {
 		t.Error("File contents don't match what was saved: ", testFile, "Got:", c, "Wanted:", testFileContents)
 	}

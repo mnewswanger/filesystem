@@ -248,8 +248,39 @@ func (fs *Filesystem) isFile(path string) bool {
 	return !os.IsNotExist(err) && !stat.IsDir()
 }
 
-// LoadFileIfExists loads the contents of path into a string if the file exists
+// LoadFileBytes loads the contents of path into a []byte if the file exists
+func (fs *Filesystem) LoadFileBytes(path string) ([]byte, error) {
+	fs.initialize()
+
+	var err error
+	path, err = fs.BuildAbsolutePathFromHome(path)
+	var fields = logrus.Fields{
+		"file": path,
+	}
+
+	fs.Logger.WithFields(fields).Debug("Attempting to load file")
+	if err == nil {
+		if fs.isFile(path) {
+			contents, err := ioutil.ReadFile(path)
+			if err == nil {
+				fs.Logger.WithFields(fields).Debug("File read successfully")
+				return contents, err
+			}
+		} else {
+			err = errors.New(path + " is not a file")
+		}
+	}
+	fs.Logger.WithFields(fields).Info("Could not read file")
+	return []byte{}, err
+}
+
+// LoadFileIfExists is deprecated in favor of LoadFileString
 func (fs *Filesystem) LoadFileIfExists(path string) (string, error) {
+	return fs.LoadFileString(path)
+}
+
+// LoadFileString loads the contents of path into a string if the file exists
+func (fs *Filesystem) LoadFileString(path string) (string, error) {
 	fs.initialize()
 
 	var err error

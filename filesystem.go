@@ -159,18 +159,19 @@ func (fs *Filesystem) GetFileSHA256Checksum(path string) (string, error) {
 
 	if err == nil {
 		if fs.isFile(path) {
-			var contents []byte
+			if f, err := os.Open(path); err == nil {
+				defer f.Close()
 
-			contents, err = ioutil.ReadFile(path)
-			if err == nil {
-				var checksum = sha256.Sum256(contents)
-				var checksumString = hex.EncodeToString(checksum[:32])
-				fields = logrus.Fields{
-					"path":     path,
-					"checksum": checksumString,
+				hasher := sha256.New()
+				if _, err := io.Copy(hasher, f); err == nil {
+					checksumString := hex.EncodeToString(hasher.Sum(nil))
+					fields = logrus.Fields{
+						"path":     path,
+						"checksum": checksumString,
+					}
+					fs.Logger.WithFields(fields).Debug("Computed file checksum")
+					return checksumString, err
 				}
-				fs.Logger.WithFields(fields).Debug("Computed file checksum")
-				return checksumString, err
 			}
 		} else {
 			err = errors.New(path + " is not a file")

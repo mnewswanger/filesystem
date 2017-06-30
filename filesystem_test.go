@@ -10,13 +10,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var fs = Filesystem{
-	Verbosity: 4,
-}
-
 func TestHomedirExpansion(t *testing.T) {
+	SetVerbosity(4)
 	color.Yellow("Testing ~ expansion functionality")
-	var expandedPath, err = fs.BuildAbsolutePathFromHome("~/test-dir")
+	var expandedPath, err = BuildAbsolutePathFromHome("~/test-dir")
 	if err != nil {
 		t.Error(err)
 	}
@@ -36,7 +33,7 @@ func TestFilesystemOperations(t *testing.T) {
 	}
 
 	// Test CheckExists - the temp directory now exists since err == nil above
-	if !fs.CheckExists(tempDir) {
+	if !CheckExists(tempDir) {
 		t.Error("Check exists failed; returned false:", tempDir)
 	}
 	// Test Remaining Directory Functions
@@ -45,24 +42,24 @@ func TestFilesystemOperations(t *testing.T) {
 
 	// Verify the loading a non-existent files / folders returns properly
 	color.Yellow("Test failure handling")
-	if c, err := fs.LoadFileString(tempDir + "/file-dne"); err == nil || c != "" {
+	if c, err := LoadFileString(tempDir + "/file-dne"); err == nil || c != "" {
 		t.Error("Load non-existent file string test failed")
 	}
-	if c, err := fs.LoadFileBytes(tempDir + "/file-dne"); err == nil || !reflect.DeepEqual(c, []byte{}) {
+	if c, err := LoadFileBytes(tempDir + "/file-dne"); err == nil || !reflect.DeepEqual(c, []byte{}) {
 		t.Error("Load non-existent file bytes test failed")
 	}
-	if fs.IsEmptyDirectory(tempDir + "/dne/") {
+	if IsEmptyDirectory(tempDir + "/dne/") {
 		t.Error("Non-existent directory says it's an empty directory")
 	}
-	if c, err := fs.GetFileSHA256Checksum(tempDir + "/file-dne"); err == nil || c != "" {
+	if c, err := GetFileSHA256Checksum(tempDir + "/file-dne"); err == nil || c != "" {
 		t.Error("Non-existent file checksum test failed")
 	}
-	if err := fs.WriteFile(tempDir+"/dne/expect-error", []byte("test"), 0644); err == nil {
+	if err := WriteFile(tempDir+"/dne/expect-error", []byte("test"), 0644); err == nil {
 		t.Error("Write should have failed but did not return an error")
 	}
 
-	fs.RemoveDirectory(tempDir, true)
-	if fs.CheckExists(tempDir) {
+	RemoveDirectory(tempDir, true)
+	if CheckExists(tempDir) {
 		t.Error("Recursive directory removal failed; returned true:", tempDir)
 	}
 	color.Yellow("Test Complete")
@@ -71,42 +68,42 @@ func TestFilesystemOperations(t *testing.T) {
 
 func testFilesystemOperations(t *testing.T, dir string) {
 	color.Yellow("Make sure the directory doesn't exist before starting")
-	if fs.CheckExists(dir) {
+	if CheckExists(dir) {
 		t.Error("Directory already exists:" + dir)
 	}
 
 	color.Yellow("Attempt to create the directory")
-	if err := fs.CreateDirectory(dir); err != nil {
+	if err := CreateDirectory(dir); err != nil {
 		t.Error("Create directory failed:", dir, err)
 	}
-	if !fs.CheckExists(dir) {
+	if !CheckExists(dir) {
 		t.Error("Create diretory did not create the directory properly:", dir)
 	}
 
 	color.Yellow("Try creating again now that the directory exists")
-	if err := fs.CreateDirectory(dir); err != nil {
+	if err := CreateDirectory(dir); err != nil {
 		t.Error("Create directory failed:", dir, err)
 	}
-	if c, err := fs.GetDirectoryContents(dir); err != nil || len(c) > 0 {
+	if c, err := GetDirectoryContents(dir); err != nil || len(c) > 0 {
 		t.Error("Directory is not empty:", dir)
 	}
 
 	color.Yellow("Remove the directory")
-	if err := fs.RemoveDirectory(dir, false); err != nil {
+	if err := RemoveDirectory(dir, false); err != nil {
 		t.Error("Directory could not be deleted:", dir)
 	}
-	if fs.CheckExists(dir) {
+	if CheckExists(dir) {
 		t.Error("Directory should have been removed but was found:", dir)
 	}
 
 	color.Yellow("Recreate the directory")
-	if err := fs.CreateDirectory(dir); err != nil {
+	if err := CreateDirectory(dir); err != nil {
 		t.Error("Create directory failed:", dir, err)
 	}
-	if !fs.CheckExists(dir) {
+	if !CheckExists(dir) {
 		t.Error("Create diretory did not create the directory properly:", dir)
 	}
-	if !fs.IsEmptyDirectory(dir) {
+	if !IsEmptyDirectory(dir) {
 		t.Error("Directory is reported as not empty but has no contents:", dir)
 	}
 
@@ -114,57 +111,57 @@ func testFilesystemOperations(t *testing.T, dir string) {
 	var testFile = dir + "/test.file"
 	var testFileContents = "test"
 	var testFileBytes = []byte(testFileContents)
-	if err := fs.WriteFile(testFile, testFileBytes, 0644); err != nil {
+	if err := WriteFile(testFile, testFileBytes, 0644); err != nil {
 		t.Error("Error occured while writing file:", testFile, err)
 	}
-	if !fs.IsDirectory(dir) {
+	if !IsDirectory(dir) {
 		t.Error("IsDirectory test failed: ", dir, " is a directory")
 	}
-	if fs.IsDirectory(testFile) {
+	if IsDirectory(testFile) {
 		t.Error("IsDirectory test failed: ", testFile, " is a file")
 	}
-	if fs.IsFile(dir) {
+	if IsFile(dir) {
 		t.Error("IsFile test failed: ", dir, " is a directory")
 	}
-	if !fs.IsFile(testFile) {
+	if !IsFile(testFile) {
 		t.Error("IsDirectory test failed: ", testFile, " is a file")
 	}
 
 	// Make sure the folder now has contents
-	if c, err := fs.GetDirectoryContents(dir); err != nil || len(c) == 0 {
+	if c, err := GetDirectoryContents(dir); err != nil || len(c) == 0 {
 		t.Error("Directory is empty and should not be: ", dir)
 	}
-	if fs.IsEmptyDirectory(dir) {
+	if IsEmptyDirectory(dir) {
 		t.Error("Directory is reported as empty but has contents:", dir)
 	}
 
 	// Verify the contents of the file match what was intended
-	if c, err := fs.LoadFileString(testFile); err != nil || c != testFileContents {
+	if c, err := LoadFileString(testFile); err != nil || c != testFileContents {
 		t.Error("File contents (string) don't match what was saved: ", testFile, "Got:", c, "Wanted:", testFileContents)
 	}
-	if c, err := fs.LoadFileBytes(testFile); err != nil || !reflect.DeepEqual(c, testFileBytes) {
+	if c, err := LoadFileBytes(testFile); err != nil || !reflect.DeepEqual(c, testFileBytes) {
 		t.Error("File contents (bytes) don't match what was saved: ", testFile, "Got:", c, "Wanted:", testFileBytes)
 	}
 	// Test deprecated function call
-	if c, err := fs.LoadFileIfExists(testFile); err != nil || c != testFileContents {
+	if c, err := LoadFileIfExists(testFile); err != nil || c != testFileContents {
 		t.Error("File contents don't match what was saved: ", testFile, "Got:", c, "Wanted:", testFileContents)
 	}
 
 	// Verify the file checksum
-	if c, err := fs.GetFileSHA256Checksum(testFile); err != nil || c != "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08" {
+	if c, err := GetFileSHA256Checksum(testFile); err != nil || c != "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08" {
 		t.Error("File checksum incorrect for:", testFile, "Got:", c, "Wanted:", "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08")
 	}
 
 	color.Yellow("Remove the directory")
-	if err := fs.RemoveDirectory(dir, true); err != nil {
+	if err := RemoveDirectory(dir, true); err != nil {
 		t.Error("Directory could not be deleted:", dir)
 	}
-	if fs.CheckExists(dir) {
+	if CheckExists(dir) {
 		t.Error("Directory should have been removed but was found: " + dir)
 	}
 
 	// Attempt to remove the directory again
-	if err := fs.RemoveDirectory(dir, false); err == nil {
+	if err := RemoveDirectory(dir, false); err == nil {
 		t.Error("Directory could not be deleted:", dir)
 	}
 }
@@ -180,7 +177,7 @@ func TestTrailingSlash(t *testing.T) {
 
 	var got string
 	for k, v := range testData {
-		got = fs.ForceTrailingSlash(k)
+		got = ForceTrailingSlash(k)
 		if got != v {
 			t.Error("ForceTrailingSlash failed:", "Got:", got, "Wanted:", v)
 		}
@@ -194,20 +191,16 @@ func TestLoggingOptions(t *testing.T) {
 	var err error
 	// Try different verbosity levels
 	for i := uint8(0); i <= 3; i++ {
-		fs = Filesystem{
-			Verbosity: i,
-		}
-		_, err = fs.BuildAbsolutePathFromHome("~/test/")
+		SetVerbosity(i)
+		_, err = BuildAbsolutePathFromHome("~/test/")
 		if err != nil {
 			t.Error(err)
 		}
 	}
 	// Try passing in
 	var logger = logrus.New()
-	fs = Filesystem{
-		Logger: logger,
-	}
-	fs.BuildAbsolutePathFromHome("~/test")
+	SetLogger(logger)
+	BuildAbsolutePathFromHome("~/test")
 	color.Yellow("Test Complete")
 	println()
 }
@@ -224,7 +217,7 @@ func TestFileExtensionFunctionality(t *testing.T) {
 
 	var got string
 	for value, expected := range extensionTestData {
-		got = fs.GetFileExtension(value)
+		got = GetFileExtension(value)
 		if got != expected {
 			t.Error("Got back unexpected extension.", "Expected:", expected, "Got:", got)
 		}

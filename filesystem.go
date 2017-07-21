@@ -49,7 +49,7 @@ func CheckExists(path string) bool {
 
 	logger.WithFields(fields).Debug("Checking to see if path exists")
 	if err == nil {
-		if _, e := os.Stat(path); !os.IsNotExist(e) {
+		if _, e := os.Stat(path); e == nil {
 			return true
 		}
 	}

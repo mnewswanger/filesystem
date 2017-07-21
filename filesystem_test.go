@@ -36,6 +36,7 @@ func TestFilesystemOperations(t *testing.T) {
 	if !CheckExists(tempDir) {
 		t.Error("Check exists failed; returned false:", tempDir)
 	}
+
 	// Test Remaining Directory Functions
 	testFilesystemOperations(t, tempDir+"/does-not-exist")
 	testFilesystemOperations(t, tempDir+"/this/has/subfolders/that/dont/exist")

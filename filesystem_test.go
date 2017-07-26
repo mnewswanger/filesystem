@@ -20,6 +20,50 @@ func TestHomedirExpansion(t *testing.T) {
 	if strings.Index(expandedPath, "/") != 0 {
 		t.Error("Absolute path should start with /")
 	}
+
+	badPath := "~~/test"
+	if _, err := BuildAbsolutePathFromHome(badPath); err == nil {
+		t.Error("BuildAbsolutePathFromHome succeeded with bad path")
+	}
+	if CheckExists(badPath) {
+		t.Error("CheckExists succeeded with bad path")
+	}
+	if err := CreateDirectory(badPath); err == nil {
+		t.Error("CreateDirectory succeeded with bad path")
+	}
+	if err := CreateDirectory("/root/test"); err == nil {
+		t.Error("CreateDirectory succeeded with at path without permissions")
+	}
+	if err := DeleteFile(badPath); err == nil {
+		t.Error("DeleteFile succeeded with bad path")
+	}
+	if _, err := GetDirectoryContents(badPath); err == nil {
+		t.Error("GetDirectoryContents succeeded with bad path")
+	}
+	if _, err := GetFileSHA256Checksum(badPath); err == nil {
+		t.Error("GetFileSHA256Checksum succeeded with bad path")
+	}
+	if IsDirectory(badPath) {
+		t.Error("IsDirectory succeeded with bad path")
+	}
+	if IsEmptyDirectory(badPath) {
+		t.Error("IsEmptyDirectory succeeded with bad path")
+	}
+	if IsFile(badPath) {
+		t.Error("IsFile succeeded with bad path")
+	}
+	if _, err := LoadFileBytes(badPath); err == nil {
+		t.Error("LoadFileBytes succeeded with bad path")
+	}
+	if _, err := LoadFileString(badPath); err == nil {
+		t.Error("LoadFileString succeeded with bad path")
+	}
+	if err := RemoveDirectory(badPath, false); err == nil {
+		t.Error("RemoveDirectory succeeded with bad path")
+	}
+	if err := WriteFile(badPath, []byte{}, 755); err == nil {
+		t.Error("WriteFile succeeded with bad path")
+	}
 	color.Yellow("Test complete")
 	println()
 }
@@ -125,8 +169,19 @@ func testFilesystemOperations(t *testing.T, dir string) {
 		t.Error("IsFile test failed: ", dir, " is a directory")
 	}
 	if !IsFile(testFile) {
-		t.Error("IsDirectory test failed: ", testFile, " is a file")
+		t.Error("Test file should exist: ", testFile, " is a file")
 	}
+	// Try IsEmptyDirectory() on a file
+	if IsEmptyDirectory(testFile) {
+		t.Error("IsEmptyDirectory on a file tested as empty directory")
+	}
+	if err := DeleteFile(testFile); err != nil {
+		t.Error("Delete file failed: ", testFile)
+	}
+	if IsFile(testFile) {
+		t.Error("Test file should have been removed: ", testFile, " is a file")
+	}
+	WriteFile(testFile, testFileBytes, 0644)
 
 	// Make sure the folder now has contents
 	if c, err := GetDirectoryContents(dir); err != nil || len(c) == 0 {

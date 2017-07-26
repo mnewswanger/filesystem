@@ -36,6 +36,9 @@ func BuildAbsolutePathFromHome(path string) (string, error) {
 
 	logger.WithFields(fields).Debug("Expanding path")
 	path, err = homedir.Expand(path)
+	if err != nil {
+		logger.WithFields(fields).Error("Could not expand path")
+	}
 	return path, err
 }
 
@@ -43,17 +46,16 @@ func BuildAbsolutePathFromHome(path string) (string, error) {
 func CheckExists(path string) bool {
 	var err error
 	path, err = BuildAbsolutePathFromHome(path)
+	if err != nil {
+		return false
+	}
 	var fields = logrus.Fields{
 		"path": path,
 	}
 
 	logger.WithFields(fields).Debug("Checking to see if path exists")
-	if err == nil {
-		if _, e := os.Stat(path); e == nil {
-			return true
-		}
-	}
-	return false
+	_, e := os.Stat(path)
+	return e == nil
 }
 
 // CreateDirectory creates a directory on the machine
@@ -61,21 +63,33 @@ func CheckExists(path string) bool {
 func CreateDirectory(path string) error {
 	var err error
 	path, err = BuildAbsolutePathFromHome(path)
+	if err != nil {
+		return err
+	}
 	var fields = logrus.Fields{
 		"path": path,
 	}
 
-	logger.WithFields(fields).Debug("Creating directory")
-	if err == nil {
-		if !isDirectory(path) {
-			err = os.MkdirAll(path, 0755)
-			if err == nil {
-				logger.WithFields(fields).Debug("Directory created successfully")
-			}
-		}
+	if isDirectory(path) {
+		return nil
 	}
-	logger.WithFields(fields).Warn("Failed to create directory")
+	logger.WithFields(fields).Debug("Creating directory")
+	err = os.MkdirAll(path, 0755)
+	if err != nil {
+		logger.WithFields(fields).Warn("Failed to create directory")
+		return err
+	}
+	logger.WithFields(fields).Debug("Directory created successfully")
 	return err
+}
+
+func DeleteFile(path string) error {
+	var err error
+	path, err = BuildAbsolutePathFromHome(path)
+	if err != nil {
+		return err
+	}
+	return os.Remove(path)
 }
 
 // ForceTrailingSlash forces a trailing slash at the end of the path
@@ -95,6 +109,9 @@ func ForceTrailingSlash(path string) string {
 func GetDirectoryContents(path string) ([]string, error) {
 	var err error
 	path, err = BuildAbsolutePathFromHome(path)
+	if err != nil {
+		return nil, err
+	}
 	var fields = logrus.Fields{
 		"path": path,
 	}
@@ -103,10 +120,8 @@ func GetDirectoryContents(path string) ([]string, error) {
 
 	logger.WithFields(fields).Debug("Listing directory contents")
 	files, err = ioutil.ReadDir(path)
-	if err == nil {
-		for _, f := range files {
-			fileNames = append(fileNames, f.Name())
-		}
+	for _, f := range files {
+		fileNames = append(fileNames, f.Name())
 	}
 	return fileNames, err
 }
@@ -125,6 +140,9 @@ func GetFileExtension(path string) string {
 func GetFileSHA256Checksum(path string) (string, error) {
 	var err error
 	path, err = BuildAbsolutePathFromHome(path)
+	if err != nil {
+		return "", err
+	}
 	var fields = logrus.Fields{
 		"path": path,
 	}
@@ -158,12 +176,15 @@ func GetFileSHA256Checksum(path string) (string, error) {
 func IsDirectory(path string) bool {
 	var err error
 	path, err = BuildAbsolutePathFromHome(path)
+	if err != nil {
+		return false
+	}
 	var fields = logrus.Fields{
 		"path": path,
 	}
 
 	logger.WithFields(fields).Debug("Checking to see if path is a directory")
-	return err == nil && isDirectory(path)
+	return isDirectory(path)
 }
 
 // Check to see if the path provided is a directory
@@ -177,21 +198,23 @@ func isDirectory(path string) bool {
 func IsEmptyDirectory(path string) bool {
 	var err error
 	path, err = BuildAbsolutePathFromHome(path)
+	if err != nil {
+		return false
+	}
 	var fields = logrus.Fields{
 		"path": path,
 	}
 
 	logger.WithFields(fields).Debug("Checking to see if path is an empty directory")
-	if err == nil {
-		if isDirectory(path) {
-			if file, err := os.Open(path); err == nil {
-				contents, err := file.Readdir(1)
 
-				if err == nil || err == io.EOF {
-					return len(contents) == 0
-				}
-			}
+	if file, err := os.Open(path); err == nil {
+		defer file.Close()
+		if !isDirectory(path) {
+			return false
 		}
+
+		contents, err := file.Readdir(1)
+		return (err == nil || err == io.EOF) && len(contents) == 0
 	}
 	return false
 }
@@ -201,12 +224,15 @@ func IsEmptyDirectory(path string) bool {
 func IsFile(path string) bool {
 	var err error
 	path, err = BuildAbsolutePathFromHome(path)
+	if err != nil {
+		return false
+	}
 	var fields = logrus.Fields{
 		"path": path,
 	}
 
 	logger.WithFields(fields).Debug("Checking to see if path is a file")
-	return err == nil && isFile(path)
+	return isFile(path)
 }
 
 // isFile checks to see if the file exists on the filesystem
@@ -219,21 +245,23 @@ func isFile(path string) bool {
 func LoadFileBytes(path string) ([]byte, error) {
 	var err error
 	path, err = BuildAbsolutePathFromHome(path)
+	if err != nil {
+		return nil, err
+	}
 	var fields = logrus.Fields{
 		"file": path,
 	}
 
 	logger.WithFields(fields).Debug("Attempting to load file")
-	if err == nil {
-		if isFile(path) {
-			contents, err := ioutil.ReadFile(path)
-			if err == nil {
-				logger.WithFields(fields).Debug("File read successfully")
-				return contents, err
-			}
-		} else {
-			err = errors.New(path + " is not a file")
+
+	if isFile(path) {
+		contents, err := ioutil.ReadFile(path)
+		if err == nil {
+			logger.WithFields(fields).Debug("File read successfully")
+			return contents, err
 		}
+	} else {
+		err = errors.New(path + " is not a file")
 	}
 	logger.WithFields(fields).Info("Could not read file")
 	return []byte{}, err
@@ -248,21 +276,22 @@ func LoadFileIfExists(path string) (string, error) {
 func LoadFileString(path string) (string, error) {
 	var err error
 	path, err = BuildAbsolutePathFromHome(path)
+	if err != nil {
+		return "", err
+	}
 	var fields = logrus.Fields{
 		"file": path,
 	}
 
 	logger.WithFields(fields).Debug("Attempting to load file")
-	if err == nil {
-		if isFile(path) {
-			contents, err := ioutil.ReadFile(path)
-			if err == nil {
-				logger.WithFields(fields).Debug("File read successfully")
-				return string(contents), err
-			}
-		} else {
-			err = errors.New(path + " is not a file")
+	if isFile(path) {
+		contents, err := ioutil.ReadFile(path)
+		if err == nil {
+			logger.WithFields(fields).Debug("File read successfully")
+			return string(contents), err
 		}
+	} else {
+		err = errors.New(path + " is not a file")
 	}
 	logger.WithFields(fields).Info("Could not read file")
 	return "", err
@@ -273,28 +302,29 @@ func LoadFileString(path string) (string, error) {
 func RemoveDirectory(path string, recursive bool) error {
 	var err error
 	path, err = BuildAbsolutePathFromHome(path)
+	if err != nil {
+		return err
+	}
 
 	var fields = logrus.Fields{
 		"directory": path,
 	}
 
-	if err == nil {
-		logger.WithFields(fields).Debug("Attempting to remove directory")
-		if isDirectory(path) {
-			if recursive {
-				logger.WithFields(fields).Debug("Removing directory with recursion")
-				err = os.RemoveAll(path)
-			} else {
-				logger.WithFields(fields).Debug("Removing directory without recursion")
-				err = os.Remove(path)
-			}
-			if err == nil {
-				logger.WithFields(fields).Debug("Directory was removed")
-				return nil
-			}
+	logger.WithFields(fields).Debug("Attempting to remove directory")
+	if isDirectory(path) {
+		if recursive {
+			logger.WithFields(fields).Debug("Removing directory with recursion")
+			err = os.RemoveAll(path)
 		} else {
-			err = errors.New(path + " is not a directory")
+			logger.WithFields(fields).Debug("Removing directory without recursion")
+			err = os.Remove(path)
 		}
+		if err == nil {
+			logger.WithFields(fields).Debug("Directory was removed")
+			return nil
+		}
+	} else {
+		err = errors.New(path + " is not a directory")
 	}
 	logger.WithFields(fields).Warn("Failed to remove directory")
 	return err
@@ -309,14 +339,16 @@ func WriteFile(path string, data []byte, mode os.FileMode) error {
 	}
 
 	path, err = BuildAbsolutePathFromHome(path)
+	if err != nil {
+		return err
+	}
+
+	logger.WithFields(fields).Debug("Writing file")
+	err = ioutil.WriteFile(path, data, mode)
 	if err == nil {
-		logger.WithFields(fields).Debug("Writing file")
-		err = ioutil.WriteFile(path, data, mode)
-		if err == nil {
-			logger.WithFields(fields).Debug("Successfully wrote file")
-		} else {
-			logger.WithFields(fields).Warn("Failed to write file")
-		}
+		logger.WithFields(fields).Debug("Successfully wrote file")
+	} else {
+		logger.WithFields(fields).Warn("Failed to write file")
 	}
 	return err
 }
